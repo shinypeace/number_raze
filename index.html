@@ -117,6 +117,16 @@
             box-shadow: 0 7px 20px 0 rgba(0, 0, 0, 0.15);
         }
 
+        .secondary-btn {
+            background-color: transparent;
+            border: 2px solid var(--primary-color);
+            color: var(--primary-color);
+        }
+        .secondary-btn:hover {
+            background-color: var(--primary-color);
+            color: var(--bg-color);
+        }
+
         .icon-btn {
             background: transparent;
             border: 2px solid var(--border-color);
@@ -228,7 +238,7 @@
             <button class="main-btn" onclick="game.startGame('medium')">Средне</button>
             <button class="main-btn" onclick="game.startGame('hard')">Сложно</button>
             <button class="main-btn" onclick="game.startGame('expert')">Эксперт</button>
-            <button class="main-btn" onclick="ui.showScreen('other-games')">Другие игры</button>
+            <button class="main-btn secondary-btn" onclick="ui.showScreen('other-games')">Другие игры</button>
         </div>
         <div class="flex space-x-4 mt-12">
             <button class="icon-btn flex justify-center items-center" onclick="ui.showModal('rules-modal')">
@@ -411,9 +421,9 @@
 
         const elements = {
             screens: {
-                mainMenu: document.getElementById('main-menu'),
-                game: document.getElementById('game-screen'),
-                otherGames: document.getElementById('other-games-screen'),
+                'main-menu': document.getElementById('main-menu'),
+                'game': document.getElementById('game-screen'),
+                'other-games': document.getElementById('other-games-screen'),
             },
             gameBoard: document.getElementById('game-board'),
             nextNumber: document.getElementById('next-number'),
@@ -825,4 +835,5 @@
     </script>
 </body>
 </html>
+
 
