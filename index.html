@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
     <title>Числовая Гонка</title>
+    <!-- VK Bridge -->
+    <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@900&family=Montserrat:wght@400;700&family=Lobster&family=Press+Start+2P&family=Caveat&display=swap" rel="stylesheet">
@@ -64,19 +67,24 @@
             --button-shadow: 0 0 15px #ff00ff;
             --border-color: #ff00ff;
         }
+
+        html {
+            height: -webkit-fill-available;
+        }
         
         body {
+            height: var(--app-height, 100vh); 
             font-family: 'Montserrat', sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
             transition: background-color 0.5s, color 0.5s;
-            touch-action: manipulation; /* Отключает двойной тап для масштабирования */
-            -webkit-tap-highlight-color: transparent; /* Убирает подсветку при тапе */
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            margin: 0; 
         }
 
         .screen {
-            height: 100vh;
-            height: -webkit-fill-available; /* Для iOS Safari */
+            height: 100%; 
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -163,12 +171,11 @@
             transform: scale(1);
         }
 
-        /* Игровое поле */
         #game-board {
             position: relative;
             width: 100%;
-            height: 100%;
             max-width: 500px;
+            max-height: 100%; 
             aspect-ratio: 9 / 16;
             overflow: hidden;
             border-radius: 1.5rem;
@@ -207,6 +214,8 @@
 </head>
 <body class="overflow-hidden">
 
+    <audio id="bg-music" loop src="music.mp3"></audio>
+
     <!-- Главное меню -->
     <div id="main-menu" class="screen p-4">
         <div class="text-center">
@@ -219,6 +228,7 @@
             <button class="main-btn" onclick="game.startGame('medium')">Средне</button>
             <button class="main-btn" onclick="game.startGame('hard')">Сложно</button>
             <button class="main-btn" onclick="game.startGame('expert')">Эксперт</button>
+            <button class="main-btn" onclick="ui.showScreen('other-games')">Другие игры</button>
         </div>
         <div class="flex space-x-4 mt-12">
             <button class="icon-btn flex justify-center items-center" onclick="ui.showModal('rules-modal')">
@@ -250,6 +260,15 @@
         </div>
         <div class="w-full flex-grow flex items-center justify-center overflow-hidden min-h-0">
              <div id="game-board"></div>
+        </div>
+    </div>
+    
+    <!-- Экран "Другие игры" -->
+    <div id="other-games-screen" class="screen hidden flex-col items-center justify-center p-4">
+        <div class="w-full max-w-sm mx-auto text-center">
+            <h1 class="text-3xl font-bold tracking-tight mb-6">Другие игры</h1>
+            <div id="other-games-container" class="grid grid-cols-3 gap-x-4 gap-y-5"></div>
+            <button onclick="ui.showScreen('main-menu')" class="main-btn w-full mt-6 py-3 px-4 rounded-xl font-semibold text-lg">Назад</button>
         </div>
     </div>
 
@@ -317,13 +336,37 @@
     <!-- Модальное окно - Настройки -->
     <div id="settings-modal" class="modal-overlay">
         <div class="modal-content">
-            <h2 class="text-3xl font-bold mb-6 text-center">Настройки Темы</h2>
-            <div class="grid grid-cols-2 gap-4">
-                <button class="p-4 rounded-lg text-lg font-bold border-4" style="background-color: #f0f2f5; border-color: #4a90e2; color: #1a202c;" onclick="ui.setTheme('default')">Светлая</button>
-                <button class="p-4 rounded-lg text-lg font-bold border-4" style="background-color: #1a202c; border-color: #00f5d4; color: #edf2f7;" onclick="ui.setTheme('cosmos')">Космос</button>
-                <button class="p-4 rounded-lg text-lg font-bold border-4" style="background-color: #f0fff4; border-color: #4caf50; color: #2f3e46;" onclick="ui.setTheme('nature')">Природа</button>
-                <button class="p-4 rounded-lg text-lg font-bold border-4" style="background-color: #fdf6e3; border-color: #d35400; color: #654f3b;" onclick="ui.setTheme('retro')">Ретро</button>
-                <button class="p-4 rounded-lg text-lg font-bold border-4 col-span-2" style="background-color: #0d0221; border-color: #ff00ff; color: #f0f0f0;" onclick="ui.setTheme('neon')">Неон</button>
+            <h2 class="text-3xl font-bold mb-6 text-center">Настройки</h2>
+            <div class="space-y-6">
+                <div>
+                    <h3 class="text-xl font-bold mb-3 text-center">Тема</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <button class="p-4 rounded-lg text-lg font-bold border-4" style="background-color: #f0f2f5; border-color: #4a90e2; color: #1a202c;" onclick="ui.setTheme('default')">Светлая</button>
+                        <button class="p-4 rounded-lg text-lg font-bold border-4" style="background-color: #1a202c; border-color: #00f5d4; color: #edf2f7;" onclick="ui.setTheme('cosmos')">Космос</button>
+                        <button class="p-4 rounded-lg text-lg font-bold border-4" style="background-color: #f0fff4; border-color: #4caf50; color: #2f3e46;" onclick="ui.setTheme('nature')">Природа</button>
+                        <button class="p-4 rounded-lg text-lg font-bold border-4" style="background-color: #fdf6e3; border-color: #d35400; color: #654f3b;" onclick="ui.setTheme('retro')">Ретро</button>
+                        <button class="p-4 rounded-lg text-lg font-bold border-4 col-span-2" style="background-color: #0d0221; border-color: #ff00ff; color: #f0f0f0;" onclick="ui.setTheme('neon')">Неон</button>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold mb-3 text-center">Громкость</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label for="music-volume" class="flex justify-between items-center text-lg">
+                                <span>Музыка</span>
+                                <span id="music-volume-label">50%</span>
+                            </label>
+                            <input id="music-volume" type="range" min="0" max="1" step="0.01" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
+                        </div>
+                        <div>
+                            <label for="effects-volume" class="flex justify-between items-center text-lg">
+                                <span>Эффекты</span>
+                                <span id="effects-volume-label">100%</span>
+                            </label>
+                            <input id="effects-volume" type="range" min="0" max="1" step="0.01" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
+                        </div>
+                    </div>
+                </div>
             </div>
             <button class="main-btn w-full mt-8" onclick="ui.hideAllModals()">Закрыть</button>
         </div>
@@ -350,9 +393,28 @@
             difficulty: 'easy',
         };
 
+        let vkUserId = null;
+        let wasMusicPlaying = false;
+        
+        let gameData = {
+            theme: 'default',
+            musicVolume: 0.5,
+            effectsVolume: 1.0,
+            levelsCompletedSinceAd: 0,
+            stats: {
+                easy: null,
+                medium: null,
+                hard: null,
+                expert: null,
+            }
+        };
+
         const elements = {
-            mainMenu: document.getElementById('main-menu'),
-            gameScreen: document.getElementById('game-screen'),
+            screens: {
+                mainMenu: document.getElementById('main-menu'),
+                game: document.getElementById('game-screen'),
+                otherGames: document.getElementById('other-games-screen'),
+            },
             gameBoard: document.getElementById('game-board'),
             nextNumber: document.getElementById('next-number'),
             timer: document.getElementById('timer'),
@@ -365,31 +427,66 @@
             },
             winTime: document.getElementById('win-time'),
             bestTime: document.getElementById('best-time'),
+            musicVolumeSlider: document.getElementById('music-volume'),
+            effectsVolumeSlider: document.getElementById('effects-volume'),
+            musicVolumeLabel: document.getElementById('music-volume-label'),
+            effectsVolumeLabel: document.getElementById('effects-volume-label'),
+            bgMusic: document.getElementById('bg-music'),
         };
 
+        const sound = {
+            synth: null,
+            isReady: false,
+            
+            init() {
+                if (this.isReady || typeof Tone === 'undefined') return;
+                Tone.start();
+                this.synth = new Tone.PolySynth(Tone.Synth, {
+                    oscillator: { type: "sine" },
+                    envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 1 },
+                }).toDestination();
+                this.isReady = true;
+            },
+
+            playClick() {
+                if (gameData.effectsVolume === 0 || !this.isReady) return;
+                this.synth.volume.value = Tone.gainToDb(gameData.effectsVolume);
+                this.synth.triggerAttackRelease("C5", "8n", Tone.now());
+            },
+            
+            playWin() {
+                if (gameData.effectsVolume === 0 || !this.isReady) return;
+                this.synth.volume.value = Tone.gainToDb(gameData.effectsVolume);
+                const now = Tone.now();
+                this.synth.triggerAttackRelease("C5", "8n", now);
+                this.synth.triggerAttackRelease("E5", "8n", now + 0.1);
+                this.synth.triggerAttackRelease("G5", "8n", now + 0.2);
+                this.synth.triggerAttackRelease("C6", "4n", now + 0.3);
+            },
+            
+            setMusicVolume(volume) {
+                 elements.bgMusic.volume = volume;
+            }
+        };
+        
         function formatTime(totalSeconds) {
+            if (totalSeconds === null || totalSeconds === undefined) return '--:--';
             const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
             const seconds = Math.floor(totalSeconds % 60).toString().padStart(2, '0');
             return `${minutes}:${seconds}`;
         }
 
         const ui = {
-            showScreen(screen) {
-                elements.mainMenu.classList.add('visually-hidden');
-                elements.gameScreen.classList.add('visually-hidden');
-                
-                setTimeout(() => {
-                    elements.mainMenu.classList.add('hidden');
-                    elements.gameScreen.classList.add('hidden');
-                    screen.classList.remove('hidden');
-                    setTimeout(() => screen.classList.remove('visually-hidden'), 50);
-                }, 300);
+            showScreen(screenName) {
+                Object.values(elements.screens).forEach(s => s.classList.add('hidden'));
+                elements.screens[screenName].classList.remove('hidden');
+                vkBridge.send('VKWebAppShowBannerAd', { banner_location: 'bottom' }).catch(e => {});
             },
 
             showModal(modalId) {
                 const modal = elements.modals[modalId.replace('-modal', '')];
                 if (modalId === 'stats-modal') {
-                    this.updateStats();
+                    this.updateStatsDisplay();
                 }
                 modal.classList.add('active');
             },
@@ -398,54 +495,97 @@
                 Object.values(elements.modals).forEach(modal => modal.classList.remove('active'));
             },
 
-            updateStats() {
-                const stats = storage.getStats();
-                document.getElementById('stats-easy').textContent = stats.easy ? formatTime(stats.easy) : '--:--';
-                document.getElementById('stats-medium').textContent = stats.medium ? formatTime(stats.medium) : '--:--';
-                document.getElementById('stats-hard').textContent = stats.hard ? formatTime(stats.hard) : '--:--';
-                document.getElementById('stats-expert').textContent = stats.expert ? formatTime(stats.expert) : '--:--';
+            updateStatsDisplay() {
+                document.getElementById('stats-easy').textContent = formatTime(gameData.stats.easy);
+                document.getElementById('stats-medium').textContent = formatTime(gameData.stats.medium);
+                document.getElementById('stats-hard').textContent = formatTime(gameData.stats.hard);
+                document.getElementById('stats-expert').textContent = formatTime(gameData.stats.expert);
             },
 
             setTheme(themeName) {
                 document.documentElement.setAttribute('data-theme', themeName);
-                storage.saveTheme(themeName);
+                gameData.theme = themeName;
+                saveGameData();
             },
             
-            loadTheme() {
-                const savedTheme = storage.getTheme();
-                if (savedTheme) {
-                    this.setTheme(savedTheme);
-                }
+            updateVolumeUI() {
+                elements.musicVolumeSlider.value = gameData.musicVolume;
+                elements.effectsVolumeSlider.value = gameData.effectsVolume;
+                elements.musicVolumeLabel.textContent = `${Math.round(gameData.musicVolume * 100)}%`;
+                elements.effectsVolumeLabel.textContent = `${Math.round(gameData.effectsVolume * 100)}%`;
+                sound.setMusicVolume(gameData.musicVolume);
+            },
+            
+            renderOtherGames() {
+                const container = document.getElementById('other-games-container');
+                container.innerHTML = '';
+                const games = [
+                    { name: 'Bubble Shooter', appId: 54051411, icon: 'icon1.png' }, { name: 'Тетрис', appId: 54051413, icon: 'icon2.png' },
+                    { name: 'Tower Blocks', appId: 53962513, icon: 'icon3.png' }, { name: 'Блок Про', appId: 53936296, icon: 'icon4.png' },
+                    { name: 'Филворды', appId: 53867134, icon: 'icon5.png' }, { name: 'Словли', appId: 53861990, icon: 'icon6.png' },
+                    { name: 'Brick Balls', appId: 54023580, icon: 'icon7.png' }, { name: '2048', appId: 53965380, icon: 'icon8.png' },
+                    { name: 'Math Matrix', appId: 53970659, icon: 'icon9.png' }
+                ];
+                games.forEach(game => {
+                    const gameEl = document.createElement('div');
+                    gameEl.className = "flex flex-col items-center cursor-pointer group";
+                    gameEl.dataset.appId = game.appId;
+                    gameEl.innerHTML = `
+                        <div class="w-20 h-20 bg-gray-200 dark:bg-gray-700 rounded-3xl mb-2 flex items-center justify-center group-hover:scale-105 transition-transform overflow-hidden">
+                           <img src="${game.icon}" alt="${game.name}" class="w-full h-full object-cover">
+                        </div>
+                        <span class="text-xs font-medium text-center">${game.name}</span>`;
+                    container.appendChild(gameEl);
+                });
+                
+                container.addEventListener('click', e => {
+                    const gameEl = e.target.closest('[data-app-id]');
+                    if (gameEl) vkBridge.send('VKWebAppOpenApp', { app_id: parseInt(gameEl.dataset.appId) });
+                });
             }
         };
 
-        const storage = {
-            getStats() {
-                return JSON.parse(localStorage.getItem('numberRaceStats')) || {};
-            },
-            saveStats(difficulty, time) {
-                const stats = this.getStats();
-                if (!stats[difficulty] || time < stats[difficulty]) {
-                    stats[difficulty] = time;
-                    localStorage.setItem('numberRaceStats', JSON.stringify(stats));
-                }
-            },
-            saveTheme(themeName) {
-                localStorage.setItem('numberRaceTheme', themeName);
-            },
-            getTheme() {
-                return localStorage.getItem('numberRaceTheme');
+        async function saveGameData() {
+            if (!vkUserId) return;
+            const storageKey = `number_race_data_${vkUserId}`;
+            try {
+                await vkBridge.send('VKWebAppStorageSet', { key: storageKey, value: JSON.stringify(gameData) });
+            } catch (error) {
+                localStorage.setItem(storageKey, JSON.stringify(gameData));
             }
-        };
+        }
+        
+        async function loadGameData() {
+            if (!vkUserId) return;
+            const storageKey = `number_race_data_${vkUserId}`;
+            let loadedData = null;
+            try {
+                const response = await vkBridge.send('VKWebAppStorageGet', { keys: [storageKey] });
+                if (response.keys[0]?.value) loadedData = JSON.parse(response.keys[0].value);
+            } catch (error) {
+                const localData = localStorage.getItem(storageKey);
+                if (localData) loadedData = JSON.parse(localData);
+            }
+            if (loadedData) {
+                gameData = {...gameData, ...loadedData};
+            }
+        }
+
+        function showInterstitialAd() {
+            gameData.levelsCompletedSinceAd++;
+            if (gameData.levelsCompletedSinceAd >= 2) {
+                vkBridge.send('VKWebAppShowInterstitial').catch(e => {});
+                gameData.levelsCompletedSinceAd = 0;
+            }
+            saveGameData();
+        }
 
         const game = {
             startGame(difficulty) {
                 state.difficulty = difficulty;
-                state.maxNumber = config.difficulties[difficulty].maxNumber;
                 this.reset();
-                ui.showScreen(elements.gameScreen);
+                ui.showScreen('game');
                 
-                // Задержка для корректной отрисовки поля перед генерацией чисел
                 setTimeout(() => {
                     this.generateNumbers();
                     this.startTimer();
@@ -468,13 +608,30 @@
             
             quitGame() {
                 ui.hideAllModals();
-                ui.showScreen(elements.mainMenu);
+                ui.showScreen('main-menu');
             },
 
             generateNumbers() {
-                const boardWidth = elements.gameBoard.clientWidth;
-                const boardHeight = elements.gameBoard.clientHeight;
-                const positions = [];
+                const board = elements.gameBoard;
+                const boardWidth = board.clientWidth;
+                const boardHeight = board.clientHeight;
+                board.innerHTML = '';
+
+                const baseMaxNumber = config.difficulties[state.difficulty].maxNumber;
+                const aspectRatio = boardWidth / boardHeight;
+                const cols = Math.ceil(Math.sqrt(baseMaxNumber * aspectRatio));
+                const rows = Math.ceil(baseMaxNumber / cols);
+                
+                state.maxNumber = rows * cols;
+
+                const cellWidth = boardWidth / cols;
+                const cellHeight = boardHeight / rows;
+
+                const cellIndexes = Array.from({ length: state.maxNumber }, (_, i) => i);
+                for (let i = cellIndexes.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [cellIndexes[i], cellIndexes[j]] = [cellIndexes[j], cellIndexes[i]];
+                }
 
                 for (let i = 1; i <= state.maxNumber; i++) {
                     const cell = document.createElement('div');
@@ -482,71 +639,53 @@
                     cell.dataset.number = i;
                     cell.classList.add('number-cell');
 
-                    const { size, x, y } = this.getSafePosition(boardWidth, boardHeight, positions);
+                    let sizeModifier = 0.85;
+                    if (state.difficulty === 'hard') sizeModifier = 0.8;
+                    if (state.difficulty === 'expert') sizeModifier = 0.75;
+                    const size = Math.min(cellWidth, cellHeight) * sizeModifier;
+                    
+                    const gridIndex = cellIndexes[i-1];
+                    const col = gridIndex % cols;
+                    const row = Math.floor(gridIndex / cols);
 
-                    positions.push({ x, y, size });
+                    let baseCellLeft = col * cellWidth;
+                    const cellTop = row * cellHeight;
+                    
+                    if (row % 2 !== 0) {
+                        baseCellLeft += cellWidth / 2;
+                    }
+                    
+                    const randomOffsetX = Math.random() * (cellWidth - size);
+                    const randomOffsetY = Math.random() * (cellHeight - size);
+
+                    let finalLeft = baseCellLeft + randomOffsetX;
+
+                    if (finalLeft + size > boardWidth) { finalLeft = boardWidth - size; }
+                    if (finalLeft < 0) { finalLeft = 0; }
 
                     cell.style.width = `${size}px`;
                     cell.style.height = `${size}px`;
-                    cell.style.left = `${x}px`;
-                    cell.style.top = `${y}px`;
-                    
+                    cell.style.left = `${finalLeft}px`;
+                    cell.style.top = `${cellTop + randomOffsetY}px`;
+
                     const randomFont = config.fonts[Math.floor(Math.random() * config.fonts.length)];
-                    const randomRotation = Math.random() * 90 - 45;
-                    const randomScale = 0.8 + Math.random() * 0.4;
-                    
+                    const randomRotation = Math.random() * 80 - 40;
                     cell.style.fontFamily = randomFont;
-                    cell.style.fontSize = `${size * 0.6}px`;
-                    cell.style.transform = `rotate(${randomRotation}deg) scale(${randomScale})`;
+                    cell.style.fontSize = `${size * 0.55}px`;
+                    cell.style.transform = `rotate(${randomRotation}deg)`;
 
-                    cell.addEventListener('click', this.handleNumberClick);
-                    elements.gameBoard.appendChild(cell);
+                    cell.addEventListener('click', this.handleNumberClick.bind(this));
+                    board.appendChild(cell);
                 }
-            },
-
-            getSafePosition(boardWidth, boardHeight, existingPositions) {
-                let size, x, y, isOverlapping;
-                const maxAttempts = 150; // Увеличено кол-во попыток
-                let attempt = 0;
-
-                do {
-                    isOverlapping = false;
-                    const scaleFactor = Math.min(boardWidth, boardHeight) / 400;
-                    
-                    let sizeModifier = 1.0;
-                    if (state.difficulty === 'hard') sizeModifier = 0.88;
-                    if (state.difficulty === 'expert') sizeModifier = 0.82;
-
-                    size = (Math.random() * 30 + 35) * scaleFactor * sizeModifier;
-                    x = Math.random() * (boardWidth - size);
-                    y = Math.random() * (boardHeight - size);
-
-                    for (const pos of existingPositions) {
-                        const dx = x - pos.x;
-                        const dy = y - pos.y;
-                        const distance = Math.sqrt(dx * dx + dy * dy);
-                        // Увеличиваем делитель, чтобы разрешить более плотное размещение
-                        if (distance < (size + pos.size) / 2.1) { 
-                            isOverlapping = true;
-                            break;
-                        }
-                    }
-                    attempt++;
-                } while (isOverlapping && attempt < maxAttempts);
-
-                return { size, x, y };
             },
 
             handleNumberClick(e) {
                 if (state.paused) return;
-
                 const clickedNumber = parseInt(e.target.dataset.number);
-                
-                if (navigator.vibrate) {
-                    navigator.vibrate(50);
-                }
+                if (navigator.vibrate) navigator.vibrate(50);
                 
                 if (clickedNumber === state.currentNumber) {
+                    sound.playClick();
                     e.target.classList.add('found');
                     state.currentNumber++;
                     
@@ -575,49 +714,115 @@
 
             pauseGame() {
                 state.paused = true;
-                clearInterval(state.timerInterval);
                 ui.showModal('pause');
             },
 
             resumeGame() {
                 ui.hideAllModals();
                 state.paused = false;
-                const currentTimeParts = elements.timer.textContent.split(':');
-                const currentTimeInSeconds = parseInt(currentTimeParts[0]) * 60 + parseInt(currentTimeParts[1]);
-                state.startTime = Date.now() - currentTimeInSeconds * 1000;
-                this.startTimer();
             },
             
             win() {
                 const finalTime = this.stopTimer();
-                storage.saveStats(state.difficulty, finalTime);
+                sound.playWin();
+                
+                if (!gameData.stats[state.difficulty] || finalTime < gameData.stats[state.difficulty]) {
+                    gameData.stats[state.difficulty] = finalTime;
+                }
+                
+                showInterstitialAd(); // Показ рекламы и сохранение прогресса
                 
                 elements.winTime.textContent = formatTime(finalTime);
-                const bestTime = storage.getStats()[state.difficulty];
-                elements.bestTime.textContent = bestTime ? formatTime(bestTime) : '--:--';
+                elements.bestTime.textContent = formatTime(gameData.stats[state.difficulty]);
                 
                 ui.showModal('win');
             }
         };
 
-        // Инициализация
-        window.onload = () => {
-            ui.loadTheme();
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => { clearTimeout(timeout); func(...args); };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        const setAppHeight = () => {
+            document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`);
+        };
+        
+        async function init() {
+            vkBridge.send('VKWebAppInit');
+            
+            vkBridge.subscribe(e => {
+                if (e.detail.type === 'VKWebAppViewHide') {
+                    if (!elements.bgMusic.paused) {
+                        wasMusicPlaying = true;
+                        elements.bgMusic.pause();
+                    }
+                }
+                if (e.detail.type === 'VKWebAppViewRestore') {
+                    if (wasMusicPlaying) {
+                       elements.bgMusic.play().catch(e => {});
+                    }
+                    wasMusicPlaying = false;
+                }
+            });
+
+            try {
+                const user = await vkBridge.send('VKWebAppGetUserInfo');
+                vkUserId = user.id;
+            } catch (error) {
+                console.warn("Could not get VK User ID.", error);
+                vkUserId = 'test_user';
+            }
+
+            await loadGameData();
+            
+            setAppHeight(); 
+            ui.setTheme(gameData.theme || 'default');
+            ui.updateVolumeUI();
+            ui.renderOtherGames();
+            
+            sound.init();
+            elements.bgMusic.play().catch(e => {});
+            
+            document.body.addEventListener('click', () => sound.init(), { once: true });
+
+            elements.musicVolumeSlider.addEventListener('input', (e) => {
+                gameData.musicVolume = parseFloat(e.target.value);
+                ui.updateVolumeUI();
+            });
+            elements.effectsVolumeSlider.addEventListener('input', (e) => {
+                gameData.effectsVolume = parseFloat(e.target.value);
+                ui.updateVolumeUI();
+            });
+            elements.musicVolumeSlider.addEventListener('change', saveGameData);
+            elements.effectsVolumeSlider.addEventListener('change', saveGameData);
+
             Object.values(elements.modals).forEach(modal => {
                 modal.addEventListener('click', (e) => {
                     if (e.target === modal) {
-                        const wasPaused = state.paused;
                         const isPauseModal = modal.id === 'pause-modal';
-                        ui.hideAllModals();
-                        if (wasPaused && isPauseModal) {
-                           game.resumeGame();
-                        }
+                        if (isPauseModal && state.paused) game.resumeGame();
+                        else ui.hideAllModals();
                     }
                 });
             });
-        };
+
+            window.addEventListener('resize', debounce(() => {
+                setAppHeight(); 
+                if (!elements.screens.game.classList.contains('hidden')) {
+                    game.generateNumbers();
+                }
+            }, 250));
+            
+            ui.showScreen('main-menu');
+        }
+        
+        window.onload = init;
     </script>
 </body>
 </html>
-
 
