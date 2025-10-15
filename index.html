@@ -213,6 +213,29 @@
             transform: scale(0.9) !important;
         }
 
+        .sound-toggle-slider {
+             background-color: #ccc;
+             transition: .4s;
+             border-radius: 34px;
+        }
+        .sound-toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .sound-toggle-slider {
+            background-color: var(--primary-color);
+        }
+        input:checked + .sound-toggle-slider:before {
+            transform: translateX(26px);
+        }
+
         .hidden {
             display: none;
         }
@@ -359,21 +382,21 @@
                     </div>
                 </div>
                 <div>
-                    <h3 class="text-xl font-bold mb-3 text-center">Громкость</h3>
+                    <h3 class="text-xl font-bold mb-3 text-center">Звук</h3>
                     <div class="space-y-4">
-                        <div>
-                            <label for="music-volume" class="flex justify-between items-center text-lg">
-                                <span>Музыка</span>
-                                <span id="music-volume-label">50%</span>
+                         <div class="flex items-center justify-between text-lg">
+                            <label for="music-toggle">Музыка</label>
+                            <label for="music-toggle" class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="music-toggle" class="sr-only peer">
+                                <div class="w-14 h-8 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--primary-color)]"></div>
                             </label>
-                            <input id="music-volume" type="range" min="0" max="1" step="0.01" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
                         </div>
-                        <div>
-                            <label for="effects-volume" class="flex justify-between items-center text-lg">
-                                <span>Эффекты</span>
-                                <span id="effects-volume-label">100%</span>
+                        <div class="flex items-center justify-between text-lg">
+                            <label for="effects-toggle">Эффекты</label>
+                            <label for="effects-toggle" class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="effects-toggle" class="sr-only peer">
+                                <div class="w-14 h-8 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--primary-color)]"></div>
                             </label>
-                            <input id="effects-volume" type="range" min="0" max="1" step="0.01" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
                         </div>
                     </div>
                 </div>
@@ -408,8 +431,8 @@
         
         let gameData = {
             theme: 'default',
-            musicVolume: 0.5,
-            effectsVolume: 1.0,
+            musicMuted: false,
+            effectsMuted: false,
             levelsCompletedSinceAd: 0,
             stats: {
                 easy: null,
@@ -437,45 +460,72 @@
             },
             winTime: document.getElementById('win-time'),
             bestTime: document.getElementById('best-time'),
-            musicVolumeSlider: document.getElementById('music-volume'),
-            effectsVolumeSlider: document.getElementById('effects-volume'),
-            musicVolumeLabel: document.getElementById('music-volume-label'),
-            effectsVolumeLabel: document.getElementById('effects-volume-label'),
+            musicToggle: document.getElementById('music-toggle'),
+            effectsToggle: document.getElementById('effects-toggle'),
             bgMusic: document.getElementById('bg-music'),
         };
 
         const sound = {
-            synth: null,
+            clickSynth: null,
+            winSynth: null,
+            buttonSynth: null,
             isReady: false,
             
             init() {
                 if (this.isReady || typeof Tone === 'undefined') return;
-                Tone.start();
-                this.synth = new Tone.PolySynth(Tone.Synth, {
-                    oscillator: { type: "sine" },
-                    envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 1 },
-                }).toDestination();
-                this.isReady = true;
+                try {
+                    Tone.start();
+                    this.clickSynth = new Tone.FMSynth({
+                        harmonicity: 1.2,
+                        modulationIndex: 10,
+                        envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.3 },
+                        modulation: { type: "square" },
+                        modulationEnvelope: { attack: 0.01, decay: 0.1, sustain: 0.2, release: 0.2 }
+                    }).toDestination();
+                    this.clickSynth.volume.value = -10;
+
+                    this.winSynth = new Tone.PolySynth(Tone.Synth, {
+                        oscillator: { type: 'triangle8' },
+                        envelope: { attack: 0.02, decay: 0.1, sustain: 0.3, release: 1 }
+                    }).toDestination();
+                    this.winSynth.volume.value = -8;
+
+                    this.buttonSynth = new Tone.Synth({
+                        oscillator: { type: 'sine' },
+                        envelope: { attack: 0.005, decay: 0.1, sustain: 0, release: 0.1 }
+                    }).toDestination();
+                    this.buttonSynth.volume.value = -15;
+
+                    this.isReady = true;
+                } catch (e) {
+                    console.error("Audio context could not be started.", e);
+                }
             },
 
             playClick() {
-                if (gameData.effectsVolume === 0 || !this.isReady) return;
-                this.synth.volume.value = Tone.gainToDb(gameData.effectsVolume);
-                this.synth.triggerAttackRelease("C5", "8n", Tone.now());
+                if (gameData.effectsMuted || !this.isReady) return;
+                this.clickSynth.triggerAttackRelease("C5", "8n");
             },
             
             playWin() {
-                if (gameData.effectsVolume === 0 || !this.isReady) return;
-                this.synth.volume.value = Tone.gainToDb(gameData.effectsVolume);
+                if (gameData.effectsMuted || !this.isReady) return;
                 const now = Tone.now();
-                this.synth.triggerAttackRelease("C5", "8n", now);
-                this.synth.triggerAttackRelease("E5", "8n", now + 0.1);
-                this.synth.triggerAttackRelease("G5", "8n", now + 0.2);
-                this.synth.triggerAttackRelease("C6", "4n", now + 0.3);
+                this.winSynth.triggerAttackRelease("C5", "8n", now);
+                this.winSynth.triggerAttackRelease("E5", "8n", now + 0.1);
+                this.winSynth.triggerAttackRelease("G5", "8n", now + 0.2);
+                this.winSynth.triggerAttackRelease("C6", "4n", now + 0.3);
+            },
+
+            playButtonTap() {
+                if (gameData.effectsMuted || !this.isReady) return;
+                this.buttonSynth.triggerAttackRelease('C4', '16n');
             },
             
-            setMusicVolume(volume) {
-                 elements.bgMusic.volume = volume;
+            toggleMusic(isMuted) {
+                 elements.bgMusic.muted = isMuted;
+                 if (!isMuted) {
+                     elements.bgMusic.play().catch(e => {});
+                 }
             }
         };
         
@@ -518,12 +568,10 @@
                 saveGameData();
             },
             
-            updateVolumeUI() {
-                elements.musicVolumeSlider.value = gameData.musicVolume;
-                elements.effectsVolumeSlider.value = gameData.effectsVolume;
-                elements.musicVolumeLabel.textContent = `${Math.round(gameData.musicVolume * 100)}%`;
-                elements.effectsVolumeLabel.textContent = `${Math.round(gameData.effectsVolume * 100)}%`;
-                sound.setMusicVolume(gameData.musicVolume);
+            updateSoundTogglesUI() {
+                elements.musicToggle.checked = !gameData.musicMuted;
+                elements.effectsToggle.checked = !gameData.effectsMuted;
+                sound.toggleMusic(gameData.musicMuted);
             },
             
             renderOtherGames() {
@@ -561,6 +609,7 @@
             try {
                 await vkBridge.send('VKWebAppStorageSet', { key: storageKey, value: JSON.stringify(gameData) });
             } catch (error) {
+                console.error("VK Storage save failed, using localStorage.", error);
                 localStorage.setItem(storageKey, JSON.stringify(gameData));
             }
         }
@@ -573,6 +622,7 @@
                 const response = await vkBridge.send('VKWebAppStorageGet', { keys: [storageKey] });
                 if (response.keys[0]?.value) loadedData = JSON.parse(response.keys[0].value);
             } catch (error) {
+                console.error("VK Storage load failed, using localStorage.", error);
                 const localData = localStorage.getItem(storageKey);
                 if (localData) loadedData = JSON.parse(localData);
             }
@@ -584,7 +634,9 @@
         function showInterstitialAd() {
             gameData.levelsCompletedSinceAd++;
             if (gameData.levelsCompletedSinceAd >= 2) {
-                vkBridge.send('VKWebAppShowInterstitial').catch(e => {});
+                vkBridge.send('VKWebAppShowInterstitial').catch(e => {
+                    console.error("Interstitial Ad Error:", e);
+                });
                 gameData.levelsCompletedSinceAd = 0;
             }
             saveGameData();
@@ -740,7 +792,7 @@
                     gameData.stats[state.difficulty] = finalTime;
                 }
                 
-                showInterstitialAd(); // Показ рекламы и сохранение прогресса
+                showInterstitialAd();
                 
                 elements.winTime.textContent = formatTime(finalTime);
                 elements.bestTime.textContent = formatTime(gameData.stats[state.difficulty]);
@@ -792,24 +844,33 @@
             
             setAppHeight(); 
             ui.setTheme(gameData.theme || 'default');
-            ui.updateVolumeUI();
+            ui.updateSoundTogglesUI();
             ui.renderOtherGames();
             
-            sound.init();
-            elements.bgMusic.play().catch(e => {});
+            // Start audio context on first user interaction
+            document.body.addEventListener('click', () => {
+                sound.init();
+                if (!gameData.musicMuted) {
+                    elements.bgMusic.play().catch(e => {});
+                }
+            }, { once: true });
             
-            document.body.addEventListener('click', () => sound.init(), { once: true });
+            // Add sound to all buttons
+            document.body.addEventListener('click', (e) => {
+                if(e.target.closest('button')) {
+                    sound.playButtonTap();
+                }
+            });
 
-            elements.musicVolumeSlider.addEventListener('input', (e) => {
-                gameData.musicVolume = parseFloat(e.target.value);
-                ui.updateVolumeUI();
+            elements.musicToggle.addEventListener('change', (e) => {
+                gameData.musicMuted = !e.target.checked;
+                sound.toggleMusic(gameData.musicMuted);
+                saveGameData();
             });
-            elements.effectsVolumeSlider.addEventListener('input', (e) => {
-                gameData.effectsVolume = parseFloat(e.target.value);
-                ui.updateVolumeUI();
+            elements.effectsToggle.addEventListener('change', (e) => {
+                gameData.effectsMuted = !e.target.checked;
+                saveGameData();
             });
-            elements.musicVolumeSlider.addEventListener('change', saveGameData);
-            elements.effectsVolumeSlider.addEventListener('change', saveGameData);
 
             Object.values(elements.modals).forEach(modal => {
                 modal.addEventListener('click', (e) => {
@@ -835,5 +896,4 @@
     </script>
 </body>
 </html>
-
 
