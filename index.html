@@ -475,26 +475,31 @@
                 if (this.isReady || typeof Tone === 'undefined') return;
                 try {
                     Tone.start();
-                    this.clickSynth = new Tone.FMSynth({
-                        harmonicity: 1.2,
-                        modulationIndex: 10,
-                        envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.3 },
-                        modulation: { type: "square" },
-                        modulationEnvelope: { attack: 0.01, decay: 0.1, sustain: 0.2, release: 0.2 }
+                    // Звук выбора числа (из примера "Пятнашки" - sfxSlide)
+                    this.clickSynth = new Tone.Synth({ 
+                        oscillator: { type: 'sine' }, 
+                        envelope: { attack: 0.001, decay: 0.1, sustain: 0.1, release: 0.1 }, 
+                        volume: -18 
                     }).toDestination();
-                    this.clickSynth.volume.value = -10;
+                    
+                    // Звук победы
+                    this.winSynth = new Tone.PolySynth(Tone.FMSynth, { 
+                        harmonicity: 3.01, 
+                        modulationIndex: 14, 
+                        envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.5 }, 
+                        volume: -10 
+                    }).toDestination();
 
-                    this.winSynth = new Tone.PolySynth(Tone.Synth, {
-                        oscillator: { type: 'triangle8' },
-                        envelope: { attack: 0.02, decay: 0.1, sustain: 0.3, release: 1 }
+                    // Звук тапа по кнопке (из примера "Пятнашки" - sfxTap)
+                    this.buttonSynth = new Tone.FMSynth({ 
+                        harmonicity: 8, 
+                        modulationIndex: 2, 
+                        oscillator: { type: 'sine' }, 
+                        envelope: { attack: 0.001, decay: 0.1, sustain: 0.01, release: 0.2 }, 
+                        modulation: { type: 'square' }, 
+                        modulationEnvelope: { attack: 0.002, decay: 0.2, sustain: 0, release: 0.2 }, 
+                        volume: -18 
                     }).toDestination();
-                    this.winSynth.volume.value = -8;
-
-                    this.buttonSynth = new Tone.Synth({
-                        oscillator: { type: 'sine' },
-                        envelope: { attack: 0.005, decay: 0.1, sustain: 0, release: 0.1 }
-                    }).toDestination();
-                    this.buttonSynth.volume.value = -15;
 
                     this.isReady = true;
                 } catch (e) {
@@ -504,21 +509,21 @@
 
             playClick() {
                 if (gameData.effectsMuted || !this.isReady) return;
-                this.clickSynth.triggerAttackRelease("C5", "8n");
+                this.clickSynth.triggerAttackRelease("A5", "32n", Tone.now());
             },
             
             playWin() {
                 if (gameData.effectsMuted || !this.isReady) return;
                 const now = Tone.now();
-                this.winSynth.triggerAttackRelease("C5", "8n", now);
-                this.winSynth.triggerAttackRelease("E5", "8n", now + 0.1);
-                this.winSynth.triggerAttackRelease("G5", "8n", now + 0.2);
-                this.winSynth.triggerAttackRelease("C6", "4n", now + 0.3);
+                this.winSynth.triggerAttackRelease("C5", "16n", now);
+                this.winSynth.triggerAttackRelease("E5", "16n", now + 0.08);
+                this.winSynth.triggerAttackRelease("G5", "16n", now + 0.16);
+                this.winSynth.triggerAttackRelease("C6", "16n", now + 0.24);
             },
 
             playButtonTap() {
                 if (gameData.effectsMuted || !this.isReady) return;
-                this.buttonSynth.triggerAttackRelease('C4', '16n');
+                this.buttonSynth.triggerAttackRelease('C5', '8n');
             },
             
             toggleMusic(isMuted) {
@@ -631,15 +636,19 @@
             }
         }
 
-        function showInterstitialAd() {
+        async function showInterstitialAd() {
             gameData.levelsCompletedSinceAd++;
+            await saveGameData(); 
+
             if (gameData.levelsCompletedSinceAd >= 2) {
-                vkBridge.send('VKWebAppShowInterstitial').catch(e => {
+                try {
+                    await vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' });
+                    gameData.levelsCompletedSinceAd = 0;
+                    await saveGameData();
+                } catch (e) {
                     console.error("Interstitial Ad Error:", e);
-                });
-                gameData.levelsCompletedSinceAd = 0;
+                }
             }
-            saveGameData();
         }
 
         const game = {
@@ -784,7 +793,7 @@
                 state.paused = false;
             },
             
-            win() {
+            async win() {
                 const finalTime = this.stopTimer();
                 sound.playWin();
                 
@@ -792,7 +801,7 @@
                     gameData.stats[state.difficulty] = finalTime;
                 }
                 
-                showInterstitialAd();
+                await showInterstitialAd();
                 
                 elements.winTime.textContent = formatTime(finalTime);
                 elements.bestTime.textContent = formatTime(gameData.stats[state.difficulty]);
