@@ -81,6 +81,9 @@
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
             margin: 0; 
+            /* Запрет выделения текста */
+            user-select: none;
+            -webkit-user-select: none;
         }
 
         .screen {
@@ -245,7 +248,7 @@
         }
     </style>
 </head>
-<body class="overflow-hidden">
+<body class="overflow-hidden" oncontextmenu="return false;">
 
     <audio id="bg-music" loop src="music.mp3"></audio>
 
@@ -803,10 +806,12 @@
                 
                 await showInterstitialAd();
                 
-                elements.winTime.textContent = formatTime(finalTime);
-                elements.bestTime.textContent = formatTime(gameData.stats[state.difficulty]);
-                
-                ui.showModal('win');
+                // Небольшая задержка перед показом окна победы, чтобы избежать багов после рекламы
+                setTimeout(() => {
+                    elements.winTime.textContent = formatTime(finalTime);
+                    elements.bestTime.textContent = formatTime(gameData.stats[state.difficulty]);
+                    ui.showModal('win');
+                }, 100);
             }
         };
 
@@ -905,4 +910,5 @@
     </script>
 </body>
 </html>
+
 
